@@ -1,61 +1,93 @@
+"""
+A simple inventory management system with functionality to add, remove,
+and track stock levels for items while allowing report generation.
+"""
+
 import json
-import logging
 from datetime import datetime
 
-# Global variable
-stock_data = {}
 
-def addItem(item="default", qty=0, logs=[]):
-    if not item:
-        return
-    stock_data[item] = stock_data.get(item, 0) + qty
-    logs.append("%s: Added %d of %s" % (str(datetime.now()), qty, item))
+class InventorySystem:
+    """Manages stock data, logging, and persistence for inventory items."""
 
-def removeItem(item, qty):
-    try:
-        stock_data[item] -= qty
-        if stock_data[item] <= 0:
-            del stock_data[item]
-    except:
-        pass
+    def __init__(self):
+        """Initialize an empty inventory and log list."""
+        self.stock_data = {}
+        self.logs = []
 
-def getQty(item):
-    return stock_data[item]
+    def add_item(self, item="default", qty=0):
+        """
+        Add a specified quantity of an item to the inventory.
+        Ignores invalid types.
+        """
+        if not isinstance(item, str) or not isinstance(qty, int):
+            return
+        self.stock_data[item] = self.stock_data.get(item, 0) + qty
+        timestamp = datetime.now()
+        self.logs.append(f"{timestamp}: Added {qty} of {item}")
 
-def loadData(file="inventory.json"):
-    f = open(file, "r")
-    global stock_data
-    stock_data = json.loads(f.read())
-    f.close()
+    def remove_item(self, item, qty):
+        """
+        Remove a quantity of an item if it exists.
+        Deletes the item entry if quantity falls to zero or below.
+        """
+        if item not in self.stock_data or not isinstance(qty, int):
+            return
+        self.stock_data[item] -= qty
+        if self.stock_data[item] <= 0:
+            del self.stock_data[item]
 
-def saveData(file="inventory.json"):
-    f = open(file, "w")
-    f.write(json.dumps(stock_data))
-    f.close()
+    def get_qty(self, item):
+        """
+        Return the current quantity of a given item.
+        Returns 0 if item is not found.
+        """
+        return self.stock_data.get(item, 0)
 
-def printData():
-    print("Items Report")
-    for i in stock_data:
-        print(i, "->", stock_data[i])
+    def load_data(self, file="inventory.json"):
+        """
+        Load inventory data from a JSON file.
+        Creates a new empty inventory if the file does not exist.
+        """
+        try:
+            with open(file, "r", encoding="utf-8") as f:
+                self.stock_data = json.load(f)
+        except FileNotFoundError:
+            self.stock_data = {}
 
-def checkLowItems(threshold=5):
-    result = []
-    for i in stock_data:
-        if stock_data[i] < threshold:
-            result.append(i)
-    return result
+    def save_data(self, file="inventory.json"):
+        """Save current inventory data to a JSON file."""
+        with open(file, "w", encoding="utf-8") as f:
+            json.dump(self.stock_data, f, indent=4)
+
+    def print_data(self):
+        """Print a formatted report of all inventory items."""
+        print("Items Report")
+        for item, qty in self.stock_data.items():
+            print(f"{item} -> {qty}")
+
+    def check_low_items(self, threshold=5):
+        """Return a list of items having stock below a given threshold."""
+        return [
+            item for item, qty in self.stock_data.items()
+            if qty < threshold
+        ]
+
 
 def main():
-    addItem("apple", 10)
-    addItem("banana", -2)
-    addItem(123, "ten")  # invalid types, no check
-    removeItem("apple", 3)
-    removeItem("orange", 1)
-    print("Apple stock:", getQty("apple"))
-    print("Low items:", checkLowItems())
-    saveData()
-    loadData()
-    printData()
-    eval("print('eval used')")  # dangerous
+    """Run a sample inventory demo with test operations."""
+    inventory = InventorySystem()
+    inventory.add_item("apple", 10)
+    inventory.add_item("banana", 3)
+    inventory.remove_item("apple", 3)
 
-main()
+    print("Apple stock:", inventory.get_qty("apple"))
+    print("Low items:", inventory.check_low_items())
+
+    inventory.save_data()
+    inventory.load_data()
+    inventory.print_data()
+
+
+if __name__ == "__main__":
+    main()
